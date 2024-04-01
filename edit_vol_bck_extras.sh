@@ -1,6 +1,11 @@
 #!/bin/bash   
 version="1.5.3"	
 
+##
+## This is a special version of the script, where you have to specify which volumes get backed up.
+## Please specify the volumes in the VOLS array below.
+##
+
 ## command variables
 TAR=/usr/bin/tar
 RM=/bin/rm
@@ -32,17 +37,18 @@ if ! ssh systeminstaller@scnfile02 "mount | grep '/Volumes/whiterabbit'" > /dev/
     echo "Backup volume not found on remote server!" >> $LOGF
     exit 1;
 fi
-
 ## Common variables
 DEST=/Volumes/temp/_edit_backs
 TODAY="$(date '+%y%m%d_%H%M')"
 STODAY="$(date '+%y%m%d')"
 LOGDIR=~/Library/Logs/
 $MKDIR -p $LOGDIR/editvol_bck # this line creates the directory if it does not exist
-LOGF=$LOGDIR/editvol_bck/edit_vol_bck_$TODAY.log
+LOGF=$LOGDIR/editvol_bck/edit_vol_bck_extras_$TODAY.log
 EXCLUDE_LIST=~/git/editvol_bck/edit_exclude.txt
 EMAIL_ADRESS=scntech@shortcutoslo.no
-VOLS=$(mount | awk '$3 ~ /\/[a-z]*_edit/ { print substr($3, 10)}') # this list backs up all network disks with the name _edit, and exluding those who dont.
+VOLS=(
+"filmlance_scn_edit_bins"
+)
 
 ## Script it baby!
 echo "Backup started on $HOSTNAME on $TODAY" >> $LOGF
@@ -61,37 +67,23 @@ done
 echo "Self-check passed. All necessary commands are installed." >> $LOGF
 echo "" >> $LOGF
 
-
-# Delete staging copies
-echo "Cleaning up staging area" >> $LOGF
-$RM -rfv $DEST/* >> $LOGF
-
 echo "" >> $LOGF
 echo "List of volumes to be backed up" >> $LOGF
 echo "$VOLS" >> $LOGF #List
 echo "" >> $LOGF
 
-## The actual backup
-for VOL in $VOLS; do
-    echo "" >> $LOGF
-    echo "backup of $VOL starts now $TODAY..." >> $LOGF
+for VOL in "${VOLS[@]}"; do
+    echo "" >> "$LOGF"
+    echo "backup of $VOL starts now $TODAY..." >> "$LOGF"
 
     # Create destination folder 
-    $MKDIR -p $DEST/$VOL
+    $MKDIR -p "$DEST/$VOL"
 
     # tar it off Facilis
-    $TAR --exclude-from $EXCLUDE_LIST -czvf $DEST/$VOL/$STODAY"_"$VOL.tar -C "/Volumes/$VOL/editorial/project/" . >> $LOGF
+    $TAR --exclude-from "$EXCLUDE_LIST" -czvf "$DEST/$VOL/$STODAY"_"$VOL.tar" -C "/Volumes/$VOL/" . >> "$LOGF"
 
-    echo "" >> $LOGF
-
+    echo "" >> "$LOGF"
 done
-
-## Some sexy reports
- echo "Size of backups" >> $LOGF
- $DU -sh $DEST/* | $SORT -h >> $LOGF
- echo "" >> $LOGF
- echo "Size of volumes" >> $LOGF
- $DF -h | $GREP _edit >> $LOGF
 
 # Sync archives from staging to whiterabbit
 echo "" >> $LOGF
@@ -102,4 +94,4 @@ echo "Backup is done... " >> $LOGF
 $CAT $LOGF
 
 ## Sending log to email recipients
-$MUTT -s "Backup $TODAY - log for edit disks" $EMAIL_ADRESS < $LOGF
+$MUTT -s "Backup $TODAY - log for edit EXTRAS disks" $EMAIL_ADRESS < $LOGF

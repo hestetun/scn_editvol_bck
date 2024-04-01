@@ -43,3 +43,4 @@ Statistics.*
 *.ai
 *.download
 *.aaf
+Unity Attic.bak*
